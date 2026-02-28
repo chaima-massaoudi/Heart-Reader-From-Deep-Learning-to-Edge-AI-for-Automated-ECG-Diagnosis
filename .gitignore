@@ -33,11 +33,18 @@ __pycache__/
 # Model outputs
 heart_reader/output/
 heart_reader/checkpoints/
+heart_reader/cache/
+heart_reader/logs/
+heart_reader/results/
+heart_reader/edge_models/
 *.ckpt
 *.pt
 *.pth
 *.onnx
 *.tflite
+
+# Logs
+training_log.txt
 
 # IDE
 .vscode/

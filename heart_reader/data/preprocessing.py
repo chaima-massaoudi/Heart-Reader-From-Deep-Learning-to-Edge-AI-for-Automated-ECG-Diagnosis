@@ -267,7 +267,7 @@ def load_ptbxl_plus_features(
 
     if not dfs:
         print("No PTB-XL+ features found. Returning empty array.")
-        return np.zeros((len(ecg_ids), 0), dtype=np.float32), None, []
+        return np.zeros((len(ecg_ids), 0), dtype=np.float32), []
 
     # Merge all feature sets on ecg_id
     merged = dfs[0]

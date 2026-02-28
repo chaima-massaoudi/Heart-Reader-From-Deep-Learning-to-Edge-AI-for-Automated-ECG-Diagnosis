@@ -175,9 +175,10 @@ def prepare_data(cfg: dict) -> Dict:
     test_dataset = ECGDataset(X_test, y_test, feat_test, transform=None)
 
     # 9) Create dataloaders
+    has_cuda = torch.cuda.is_available()
     common_kwargs = dict(
         num_workers=train_cfg.get("num_workers", 4),
-        pin_memory=True,
+        pin_memory=has_cuda,
         persistent_workers=True if train_cfg.get("num_workers", 4) > 0 else False,
     )
     train_loader = DataLoader(
