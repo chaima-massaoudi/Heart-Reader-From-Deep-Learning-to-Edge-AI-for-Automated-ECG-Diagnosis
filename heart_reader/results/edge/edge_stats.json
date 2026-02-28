@@ -1,0 +1,14 @@
+{
+  "full_model_params": 977157,
+  "full_model_size_mb": 3.79,
+  "cpu_latency_mean_ms": 717.0,
+  "cpu_latency_std_ms": 398.3,
+  "pruned_sparsity_pct": 0.0,
+  "pruned_size_mb": 3.79,
+  "quantized_size_mb": 2.37,
+  "compression_ratio_quant": 1.6,
+  "compression_ratio_pruned": 1.0,
+  "signal_only_params": 553733,
+  "signal_only_size_mb": 2.16,
+  "quantized_latency_ms": 826.5
+}

@@ -30,18 +30,26 @@ __pycache__/
 *$py.class
 *.so
 
-# Model outputs
+# Model outputs (binaries — too large)
 heart_reader/output/
 heart_reader/checkpoints/
 heart_reader/cache/
 heart_reader/logs/
-heart_reader/results/
 heart_reader/edge_models/
 *.ckpt
+
+# Large model binaries
 *.pt
 *.pth
 *.onnx
 *.tflite
+
+# But KEEP results (CSVs, JSONs, report)
+!heart_reader/results/
+!heart_reader/results/**/*.csv
+!heart_reader/results/**/*.json
+!heart_reader/results/evaluation_report.json
+!heart_reader/results/edge/edge_stats.json
 
 # Logs
 training_log.txt

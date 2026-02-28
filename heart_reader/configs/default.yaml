@@ -58,8 +58,8 @@ model:
     kernel_size: 5
     stem_szs: [32, 32, 64]
     block_szs: [64, 128, 256, 512]
-    layers: [2, 2, 2, 2]       # Use 18-layer variant for CPU training
-    expansion: 1               # BasicBlock (no bottleneck) for speed
+    layers: [3, 4, 6, 3]       # ResNet-50 style (GPU)
+    expansion: 1               # BasicBlock for 6GB VRAM
 
   se_resnet1d:
     kernel_sizes: [5, 3]
@@ -83,9 +83,9 @@ model:
 
 # ── Training ─────────────────────────────────────────────────────────────────
 training:
-  epochs: 30
-  batch_size: 64
-  num_workers: 0               # 0 for Windows compatibility
+  epochs: 50
+  batch_size: 128
+  num_workers: 4               # Parallel data loading for GPU
   optimizer: "adamw"
   lr: 0.01
   lr_rnn: 0.001                # Lower LR for RNN-based components
@@ -95,11 +95,11 @@ training:
   focal_alpha: 0.25
   focal_gamma: 2.0
   grad_clip: 1.0
-  use_amp: false               # Disabled — CPU-only training
+  use_amp: true                # Mixed precision — RTX 3050 GPU
   early_stopping:
     enabled: true
     monitor: "macro_auc"
-    patience: 7
+    patience: 10
     mode: "max"
   checkpoint_dir: "./checkpoints/"
   log_dir: "./logs/"

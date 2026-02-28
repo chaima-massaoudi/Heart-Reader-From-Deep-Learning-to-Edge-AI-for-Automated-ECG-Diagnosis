@@ -1,6 +1,18 @@
-# Heart Reader Challenge — Multi-Label ECG Classification
+# Heart Reader Challenge — From Deep Learning to Edge AI for Automated ECG Diagnosis
 
-A complete, competition-ready multi-label ECG classification system for the **Heart Reader Challenge**, built on the PTB-XL dataset with modern PyTorch.
+A complete multi-label ECG classification system for the **Heart Reader Challenge**, achieving **Macro-AUC 0.924** on the PTB-XL test set using multimodal fusion of raw 12-lead signals with PTB-XL+ structured features.
+
+> **Full Performance Report:** See [REPORT.md](REPORT.md) for the complete challenge report with all metrics, architecture details, and edge deployment results.
+
+## Results Summary
+
+| Metric | Score | 90% CI |
+|--------|-------|--------|
+| **Macro-AUC** | **0.924** | [0.917, 0.930] |
+| **Macro F1** | **0.714** | [0.710, 0.745] |
+| **Fmax** | **0.757** | [0.746, 0.770] |
+| **Model Size** | 3.79 MB | — |
+| **Quantized Size** | 2.37 MB | 1.6× compression |
 
 ## Approach Summary
 
@@ -24,15 +36,15 @@ We detect **5 diagnostic superclasses** from 12-lead ECG recordings:
 
 3. **SE-ResNet1d** — Wang-style ResNet (no pooling in stem, kernel sizes [5,3]) augmented with SE blocks for adaptive channel recalibration.
 
-Each backbone is fused with a **Feature Branch MLP** that encodes ~198 structured features from the PTB-XL+ dataset (P/QRS/T amplitudes, durations, axes from 12SL and ECGdeli). Signal embeddings (256-dim) are concatenated with feature embeddings (64-dim) and fed through a fusion head.
+Each backbone is fused with a **Feature Branch MLP** that encodes **1,313 structured features** from the PTB-XL+ dataset (12SL and ECGdeli features including P/QRS/T amplitudes, durations, axes, and diagnostic markers). Signal embeddings (256-dim) are concatenated with feature embeddings (64-dim) and fed through a fusion head.
 
 A **learned weighted ensemble** combines the 3 models via scipy Nelder-Mead optimization on validation AUC.
 
 ### Key Design Choices
 
-- **Loss**: Focal Loss (α=0.25, γ=2) to handle class imbalance
-- **Optimizer**: AdamW with OneCycleLR (max_lr=0.01, pct_start=0.3)
-- **Mixed precision**: PyTorch AMP (float16) for 2x speedup
+- **Loss**: BCEWithLogitsLoss (binary cross-entropy for multi-label)
+- **Optimizer**: AdamW with OneCycleLR (max_lr=0.01)
+- **Mixed precision**: PyTorch AMP (float16) for GPU acceleration
 - **Data augmentation**: Gaussian noise, random scaling, lead dropout, baseline wander, time warping
 - **Thresholding**: Per-class optimal thresholds via Youden's J statistic on validation fold
 - **Evaluation**: Bootstrap confidence intervals (n=100), macro AUC, F_max, G_beta (challenge metrics)
@@ -162,13 +174,24 @@ Following the official PTB-XL benchmark protocol:
 
 | Parameter | Value |
 |-----------|-------|
-| Input     | 12-lead ECG, 1000 samples (10s @ 100Hz) |
+| Input     | 12-lead ECG, 1000 samples (10s @ 100Hz) + 1313 PTB-XL+ features |
 | Batch size | 128 |
-| Optimizer | AdamW (lr=0.01, wd=1e-4) |
-| Scheduler | OneCycleLR (50 epochs, pct_start=0.3) |
-| Loss      | Focal Loss (α=0.25, γ=2) |
+| Optimizer | AdamW (lr=0.01, wd=0.01) |
+| Scheduler | OneCycleLR (50 epochs) |
+| Loss      | BCEWithLogitsLoss |
 | AMP       | float16 mixed precision |
 | Early stop | Patience 10 (monitor: val macro AUC) |
+| GPU       | NVIDIA RTX 3050 6GB |
+
+## Per-Class AUC (Test Set — Fold 10)
+
+| Class | AUC | Description |
+|-------|-----|-------------|
+| NORM | 0.958 | Normal ECG |
+| MI | 0.930 | Myocardial Infarction |
+| STTC | 0.931 | ST/T Change |
+| CD | 0.910 | Conduction Disturbance |
+| HYP | 0.890 | Hypertrophy |
 
 ## Edge Optimization Pipeline
 

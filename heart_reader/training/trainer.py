@@ -293,23 +293,23 @@ class Trainer:
                                  f"{val_auc:.4f}", f"{current_lr:.6f}", f"{train_time:.1f}"])
 
             # Print epoch summary
-            print(f"Epoch {epoch:3d}/{self.epochs} │ "
-                  f"Train Loss: {train_loss:.4f} │ "
-                  f"Val Loss: {val_loss:.4f} │ "
-                  f"Val AUC: {val_auc:.4f} │ "
-                  f"LR: {current_lr:.6f} │ "
+            print(f"Epoch {epoch:3d}/{self.epochs} | "
+                  f"Train Loss: {train_loss:.4f} | "
+                  f"Val Loss: {val_loss:.4f} | "
+                  f"Val AUC: {val_auc:.4f} | "
+                  f"LR: {current_lr:.6f} | "
                   f"Time: {train_time:.1f}s")
 
             # Checkpoint
             saved = self.checkpoint.step(self.model, val_auc, epoch)
             if saved:
-                print(f"  ✓ Saved best model (AUC={val_auc:.4f})")
+                print(f"  [*] Saved best model (AUC={val_auc:.4f})")
 
             # Early stopping
             if self.early_stopping:
                 stop = self.early_stopping.step(val_auc, epoch)
                 if stop:
-                    print(f"\n  ⚡ Early stopping at epoch {epoch} "
+                    print(f"\n  [!] Early stopping at epoch {epoch} "
                           f"(best epoch: {self.early_stopping.best_epoch}, "
                           f"best AUC: {self.early_stopping.best_score:.4f})")
                     break
