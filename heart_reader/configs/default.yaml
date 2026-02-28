@@ -1,0 +1,128 @@
+# =============================================================================
+# Heart Reader Challenge — Default Configuration
+# =============================================================================
+# Multi-label ECG classification on PTB-XL (5 superclasses)
+# NORM, MI, STTC, CD, HYP
+
+seed: 42
+
+# ── Data ─────────────────────────────────────────────────────────────────────
+data:
+  # Path to the PTB-XL v1.0.3 dataset (must contain ptbxl_database.csv + records/)
+  ptbxl_path: "../data/ptbxl/"
+  # Path to the PTB-XL+ feature dataset
+  ptbxl_plus_path: "../ptb-xl-a-comprehensive-electrocardiographic-feature-dataset-1.0.1/ptb-xl-a-comprehensive-electrocardiographic-feature-dataset-1.0.1/"
+  sampling_rate: 100          # Hz — use 100 Hz downsampled signals
+  duration: 10.0              # seconds per recording
+  num_leads: 12
+  task: "superdiagnostic"     # Target the 5 diagnostic superclasses
+  min_samples: 0              # Minimum samples per class
+  train_folds: [1,2,3,4,5,6,7,8]
+  val_fold: 9
+  test_fold: 10
+  use_ptbxl_plus_features: true
+  cache_dir: "./cache/"
+
+# ── Augmentation (training only) ────────────────────────────────────────────
+augmentation:
+  enabled: true
+  gaussian_noise_std: 0.05
+  random_scale_range: [0.8, 1.2]
+  lead_dropout_prob: 0.1
+  lead_dropout_max: 2
+  baseline_wander_prob: 0.3
+  time_warp_prob: 0.2
+  time_warp_max_ratio: 0.1
+  random_crop: false           # false = use full 10s; true = crop 2.5s windows
+  crop_length: 250             # samples (2.5s at 100Hz)
+
+# ── Model ────────────────────────────────────────────────────────────────────
+model:
+  # Backbone options: "inception1d", "xresnet1d101", "se_resnet1d"
+  # Use "ensemble" to train all three and combine
+  backbone: "ensemble"
+  num_classes: 5
+  input_channels: 12
+  input_length: 1000           # samples (10s at 100Hz)
+
+  inception1d:
+    depth: 6
+    kernel_size: 40
+    bottleneck_size: 32
+    nb_filters: 32
+    use_residual: true
+    use_se: true               # Add SE attention (novel improvement)
+    se_reduction: 16
+
+  xresnet1d101:
+    kernel_size: 5
+    stem_szs: [32, 32, 64]
+    block_szs: [64, 128, 256, 512]
+    layers: [2, 2, 2, 2]       # Use 18-layer variant for CPU training
+    expansion: 1               # BasicBlock (no bottleneck) for speed
+
+  se_resnet1d:
+    kernel_sizes: [5, 3]
+    inplanes: 128
+    layers: [1, 1, 1]
+    se_reduction: 16
+
+  feature_branch:
+    hidden_dims: [256, 128, 64]
+    dropout: 0.3
+
+  fusion:
+    signal_embed_dim: 256
+    feature_embed_dim: 64
+    fusion_hidden: 128
+    dropout: 0.5
+
+  ensemble:
+    method: "weighted"          # "weighted" or "average"
+    optimize_weights: true
+
+# ── Training ─────────────────────────────────────────────────────────────────
+training:
+  epochs: 30
+  batch_size: 64
+  num_workers: 0               # 0 for Windows compatibility
+  optimizer: "adamw"
+  lr: 0.01
+  lr_rnn: 0.001                # Lower LR for RNN-based components
+  weight_decay: 0.01
+  scheduler: "one_cycle"       # "one_cycle", "cosine", "step"
+  loss: "bce"                  # "bce", "focal"
+  focal_alpha: 0.25
+  focal_gamma: 2.0
+  grad_clip: 1.0
+  use_amp: false               # Disabled — CPU-only training
+  early_stopping:
+    enabled: true
+    monitor: "macro_auc"
+    patience: 7
+    mode: "max"
+  checkpoint_dir: "./checkpoints/"
+  log_dir: "./logs/"
+
+# ── Evaluation ───────────────────────────────────────────────────────────────
+evaluation:
+  bootstrap: true
+  n_bootstrap: 100
+  threshold_method: "youden"   # "youden" or "gbeta"
+  results_dir: "./results/"
+
+# ── Edge Deployment ──────────────────────────────────────────────────────────
+edge:
+  enabled: true
+  pruning:
+    enabled: true
+    amount: 0.5                # Prune 50% of filters
+    finetune_epochs: 10
+  quantization:
+    enabled: true
+    method: "dynamic"          # "dynamic", "static", "qat"
+  tflite:
+    enabled: true
+    optimize: true             # Apply DEFAULT optimization
+    full_integer: false        # Full INT8 quantization
+  output_dir: "./edge_models/"

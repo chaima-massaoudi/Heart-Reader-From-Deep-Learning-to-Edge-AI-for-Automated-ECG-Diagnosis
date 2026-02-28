@@ -1,0 +1,51 @@
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Data files (too large for git)
+/data/
+*.zip
+*.npy
+*.dat
+*.hea
+
+# Reference repos (not our code)
+ecg_benchmarking-master/
+ecg_ptbxl_benchmarking-master/
+ptb-xl-a-comprehensive-electrocardiographic-feature-dataset-1.0.1/
+
+# PDF papers
+*.pdf
+
+# Helper/temp scripts
+download_ptbxl.py
+parallel_download.py
+auto_train.py
+ptbxl.zip
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Model outputs
+heart_reader/output/
+heart_reader/checkpoints/
+*.ckpt
+*.pt
+*.pth
+*.onnx
+*.tflite
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Jupyter
+.ipynb_checkpoints/
