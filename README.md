@@ -45,13 +45,15 @@
 
 ---
 
-## Video Demo
+## Demo
 
-A full walkthrough of the web dashboard showing real-time ECG analysis, file upload, and diagnostic predictions:
+<p align="center">
+  <img src="heart_reader/demo.gif" alt="Heart Reader Dashboard Demo" width="720" />
+</p>
 
-https://github.com/chaima-massaoudi/Heart-Reader-From-Deep-Learning-to-Edge-AI-for-Automated-ECG-Diagnosis/raw/main/heart_reader/demo.mp4
+<p align="center"><em>Interactive dashboard — 12-lead ECG visualization, real-time diagnosis, and confidence scores (5× speed)</em></p>
 
-> The demo video is also available locally at [`heart_reader/demo.mp4`](heart_reader/demo.mp4).
+> Full-length video: [`heart_reader/demo.mp4`](heart_reader/demo.mp4)
 
 ---
 

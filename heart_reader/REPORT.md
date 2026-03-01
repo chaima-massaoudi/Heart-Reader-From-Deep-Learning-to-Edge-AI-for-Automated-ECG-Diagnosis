@@ -406,7 +406,17 @@ We developed a full-featured web application for interactive ECG analysis, built
 | `/api/random-sample` | GET | Random test-set ECG with predictions |
 | `/api/predict` | POST | Upload CSV for real-time diagnosis |
 
-### 7.4 Frontend Features
+### 7.4 Dashboard Demo
+
+<p align="center">
+  <img src="demo.gif" alt="Heart Reader Dashboard Demo" width="720" />
+</p>
+
+<p align="center"><em>Dashboard walkthrough — upload, 12-lead viewer, probability chart, and diagnosis panel (5× speed)</em></p>
+
+> Full-length video: [`demo.mp4`](demo.mp4)
+
+### 7.5 Frontend Features
 
 - **3-Column Responsive Layout**: Input panel, diagnosis panel, model info panel
 - **12-Lead ECG Viewer**: Full waveform visualization with Chart.js, labeled leads on a clinical-style grid
@@ -417,7 +427,7 @@ We developed a full-featured web application for interactive ECG analysis, built
 - **Graph Export**: One-click PNG download of any chart via html2canvas
 - **Dark Medical Theme**: Professional dark interface with ECG-green (#00df80) accent colors and pulse animation
 
-### 7.5 Upload Format
+### 7.6 Upload Format
 
 The dashboard accepts CSV files in two formats:
 
@@ -426,7 +436,7 @@ The dashboard accepts CSV files in two formats:
 
 When PTB-XL+ features are embedded in the CSV, the fusion model uses them for full-accuracy predictions. Without features, the model uses the signal backbone with neutral feature defaults.
 
-### 7.6 Test Files
+### 7.7 Test Files
 
 Pre-selected test CSV files demonstrating each diagnostic class are provided:
 
