@@ -1,0 +1,358 @@
+/* ─────────────────────────────────────────────────────────────────
+   Heart Reader — Dark Medical Theme
+   ───────────────────────────────────────────────────────────────── */
+
+:root {
+    --bg-main:   #0b0d14;
+    --bg-card:   #12151f;
+    --bg-hover:  #1c2030;
+    --border:    #252a3a;
+    --accent:    #e74c5e;
+    --accent2:   #f59e0b;
+    --text:      #e4e5eb;
+    --text-dim:  #6b7194;
+    --success:   #22c55e;
+    --warning:   #f59e0b;
+    --danger:    #ef4444;
+    --info:      #3b82f6;
+    --ecg-green: #00df80;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg-main);
+    color: var(--text);
+    margin: 0;
+    min-height: 100vh;
+}
+
+/* ── Logo animation ──────────────────────────────────────── */
+.logo-pulse {
+    animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.1); }
+}
+
+/* ── Cards ───────────────────────────────────────────────── */
+.card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+}
+.card:hover {
+    border-color: #353a50;
+}
+.card-header {
+    background: transparent;
+    border-bottom: 1px solid var(--border);
+    font-weight: 600;
+    font-size: 0.85rem;
+    padding: 0.6rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-dim);
+}
+.card-header i { color: var(--accent); }
+
+/* ── Upload Zone ─────────────────────────────────────────── */
+.upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: 10px;
+    padding: 1.5rem 1rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100px;
+}
+.upload-zone:hover,
+.upload-zone.drag-over {
+    border-color: var(--accent);
+    background: rgba(231, 76, 94, 0.04);
+}
+
+.divider-text {
+    text-align: center;
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    position: relative;
+}
+.divider-text::before,
+.divider-text::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: 30%;
+    height: 1px;
+    background: var(--border);
+}
+.divider-text::before { left: 0; }
+.divider-text::after  { right: 0; }
+
+/* ── Empty State ─────────────────────────────────────────── */
+.empty-state {
+    text-align: center;
+    padding: 2rem 1rem;
+    opacity: 0.6;
+}
+
+/* ── Diagnosis Banner ────────────────────────────────────── */
+.diagnosis-banner {
+    border-radius: 10px;
+    padding: 0.8rem 1rem;
+    font-weight: 700;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+.diagnosis-banner.normal {
+    background: rgba(34,197,94,0.1);
+    border: 1px solid rgba(34,197,94,0.25);
+    color: var(--success);
+}
+.diagnosis-banner.abnormal {
+    background: rgba(231,76,94,0.1);
+    border: 1px solid rgba(231,76,94,0.25);
+    color: var(--accent);
+}
+.diagnosis-banner i { font-size: 1.3rem; }
+
+/* ── Prediction Bars ─────────────────────────────────────── */
+.pred-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.45rem 0;
+    font-size: 0.82rem;
+}
+.pred-row .cls-name {
+    font-weight: 700;
+    min-width: 45px;
+    color: var(--text);
+}
+.pred-row .bar-track {
+    flex: 1;
+    height: 10px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 5px;
+    overflow: hidden;
+    position: relative;
+}
+.pred-row .bar-fill {
+    height: 100%;
+    border-radius: 5px;
+    transition: width 0.8s cubic-bezier(.23,1,.32,1);
+    position: relative;
+}
+.pred-row .bar-fill.positive { background: linear-gradient(90deg, var(--accent), #ff6b7a); }
+.pred-row .bar-fill.negative { background: rgba(255,255,255,0.12); }
+.pred-row .prob-value {
+    font-weight: 700;
+    min-width: 50px;
+    text-align: right;
+    font-size: 0.85rem;
+}
+.pred-row .status-icon {
+    font-size: 0.75rem;
+    min-width: 16px;
+}
+
+/* ── ECG Chart Grid ──────────────────────────────────────── */
+#ecgCharts {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+    padding: 4px;
+}
+.ecg-lead-wrapper {
+    background: rgba(0,0,0,0.25);
+    border-radius: 8px;
+    padding: 6px 10px 4px 10px;
+    position: relative;
+    border: 1px solid rgba(255,255,255,0.03);
+}
+.ecg-lead-wrapper canvas {
+    width: 100% !important;
+    height: 90px !important;
+}
+.ecg-lead-label {
+    position: absolute;
+    top: 6px;
+    left: 10px;
+    font-size: 0.65rem;
+    font-weight: 800;
+    color: var(--ecg-green);
+    text-transform: uppercase;
+    z-index: 2;
+    letter-spacing: 0.06em;
+    text-shadow: 0 0 8px rgba(0,223,128,0.3);
+}
+.ecg-time-label {
+    position: absolute;
+    bottom: 3px;
+    right: 8px;
+    font-size: 0.55rem;
+    color: var(--text-dim);
+}
+
+/* ── Model Info ──────────────────────────────────────────── */
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.3rem 0;
+    font-size: 0.8rem;
+}
+.info-row .label { color: var(--text-dim); }
+.info-row .value { font-weight: 600; color: var(--text); }
+
+/* ── Performance Metrics ─────────────────────────────────── */
+.perf-metric {
+    text-align: center;
+    padding: 0.6rem 0.3rem;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.02);
+}
+.perf-metric .number {
+    font-size: 1.6rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--ecg-green), var(--info));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+.perf-metric .desc {
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-top: 2px;
+}
+
+/* ── Per-class AUC bars ──────────────────────────────────── */
+.auc-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 4px;
+    font-size: 0.78rem;
+}
+.auc-row .cls { width: 45px; font-weight: 700; color: var(--accent); }
+.auc-row .track {
+    flex: 1;
+    height: 7px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 0 8px;
+}
+.auc-row .track .fill {
+    height: 100%;
+    border-radius: 4px;
+    background: linear-gradient(90deg, var(--info), var(--ecg-green));
+    transition: width 0.6s ease;
+}
+.auc-row .val { width: 48px; text-align: right; font-weight: 600; }
+
+/* ── Ground Truth Badges ─────────────────────────────────── */
+.gt-badge {
+    display: inline-block;
+    padding: 0.3rem 0.7rem;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 0.75rem;
+    margin: 0.1rem;
+}
+.gt-badge.positive { background: rgba(34,197,94,0.15); color: var(--success); border: 1px solid rgba(34,197,94,0.3); }
+.gt-badge.negative { background: rgba(255,255,255,0.03); color: var(--text-dim); }
+
+/* ── Save Buttons ────────────────────────────────────────── */
+.save-btn {
+    font-size: 0.72rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 6px;
+}
+.save-btn:hover {
+    background: var(--info);
+    border-color: var(--info);
+    color: #fff;
+}
+
+/* ── Loading ECG Animation ───────────────────────────────── */
+.overlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(11,13,20,0.88);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    backdrop-filter: blur(6px);
+}
+.ecg-loader { width: 200px; height: 60px; }
+.ecg-svg { width: 100%; height: 100%; }
+.ecg-line {
+    fill: none;
+    stroke: var(--ecg-green);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-dasharray: 500;
+    stroke-dashoffset: 500;
+    animation: drawECG 1.5s ease-in-out infinite;
+}
+@keyframes drawECG {
+    0%   { stroke-dashoffset: 500; }
+    50%  { stroke-dashoffset: 0; }
+    100% { stroke-dashoffset: -500; }
+}
+
+/* ── Toast ────────────────────────────────────────────────── */
+.toast {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text);
+}
+
+/* ── Buttons ─────────────────────────────────────────────── */
+.btn-primary {
+    background: linear-gradient(135deg, var(--accent), #c42d40);
+    border: none;
+    font-weight: 600;
+}
+.btn-primary:hover {
+    background: linear-gradient(135deg, #c42d40, var(--accent));
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(231,76,94,0.3);
+}
+.btn-outline-secondary.active {
+    background: var(--accent) !important;
+    border-color: var(--accent) !important;
+    color: #fff !important;
+}
+
+/* ── Scrollbar ───────────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+
+/* ── Responsive ──────────────────────────────────────────── */
+@media (max-width: 1200px) {
+    #ecgCharts { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 768px) {
+    #ecgCharts { grid-template-columns: 1fr; }
+    .ecg-lead-wrapper canvas { height: 70px !important; }
+}

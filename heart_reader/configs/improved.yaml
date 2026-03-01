@@ -1,0 +1,130 @@
+# =============================================================================
+# Heart Reader — Improved Training Configuration
+# =============================================================================
+# Higher accuracy via: focal loss, label smoothing, mixup, SWA, longer training
+# Based on default.yaml with tuned hyperparameters
+
+seed: 42
+
+data:
+  ptbxl_path: "../data/ptbxl/"
+  ptbxl_plus_path: "../ptb-xl-a-comprehensive-electrocardiographic-feature-dataset-1.0.1/ptb-xl-a-comprehensive-electrocardiographic-feature-dataset-1.0.1/"
+  sampling_rate: 100
+  duration: 10.0
+  num_leads: 12
+  task: "superdiagnostic"
+  min_samples: 0
+  train_folds: [1,2,3,4,5,6,7,8]
+  val_fold: 9
+  test_fold: 10
+  use_ptbxl_plus_features: true
+  cache_dir: "./cache/"
+
+augmentation:
+  enabled: true
+  gaussian_noise_std: 0.03        # Slightly reduced — less corruption
+  random_scale_range: [0.85, 1.15]
+  lead_dropout_prob: 0.08
+  lead_dropout_max: 2
+  baseline_wander_prob: 0.25
+  time_warp_prob: 0.15
+  time_warp_max_ratio: 0.08
+  random_crop: false
+  crop_length: 250
+  # New augmentations
+  mixup_alpha: 0.3                # Mixup interpolation parameter
+  mixup_prob: 0.5                 # Apply mixup 50% of the time
+  cutmix_prob: 0.0                # Disable cutmix
+
+model:
+  backbone: "inception1d"         # Train single best backbone first
+  num_classes: 5
+  input_channels: 12
+  input_length: 1000
+
+  inception1d:
+    depth: 6
+    kernel_size: 40
+    bottleneck_size: 32
+    nb_filters: 32
+    use_residual: true
+    use_se: true
+    se_reduction: 16
+
+  xresnet1d101:
+    kernel_size: 5
+    stem_szs: [32, 32, 64]
+    block_szs: [64, 128, 256, 512]
+    layers: [3, 4, 6, 3]
+    expansion: 1
+
+  se_resnet1d:
+    kernel_sizes: [5, 3]
+    inplanes: 128
+    layers: [1, 1, 1]
+    se_reduction: 16
+
+  feature_branch:
+    hidden_dims: [256, 128, 64]
+    dropout: 0.25                 # Slightly less dropout on feature branch
+
+  fusion:
+    signal_embed_dim: 256
+    feature_embed_dim: 64
+    fusion_hidden: 128
+    dropout: 0.4                  # Slightly less dropout on fusion
+
+  ensemble:
+    method: "weighted"
+    optimize_weights: true
+
+training:
+  epochs: 80                      # More epochs (early stopping will still kick in)
+  batch_size: 64                  # Smaller batch = better generalization, more gradient noise
+  num_workers: 4
+  optimizer: "adamw"
+  lr: 0.003                       # Lower peak LR for stability
+  weight_decay: 0.02              # Slightly more regularization
+  scheduler: "one_cycle"
+  loss: "focal"                   # Focal loss for class-imbalanced ECG data
+  focal_alpha: 0.25
+  focal_gamma: 2.0
+  label_smoothing: 0.05           # Prevents overconfident predictions
+  grad_clip: 1.0
+  use_amp: true
+  # Mixup (applied in training loop)
+  mixup_alpha: 0.3
+  mixup_prob: 0.5
+  # Stochastic Weight Averaging
+  swa:
+    enabled: true
+    start_epoch: 40               # Start SWA after epoch 40
+    lr: 0.0005                    # SWA LR
+  early_stopping:
+    enabled: true
+    monitor: "macro_auc"
+    patience: 15                  # More patience since we use SWA
+    mode: "max"
+  checkpoint_dir: "./checkpoints/"
+  log_dir: "./logs/"
+
+evaluation:
+  bootstrap: true
+  n_bootstrap: 100
+  threshold_method: "youden"
+  results_dir: "./results/"
+
+edge:
+  enabled: true
+  pruning:
+    enabled: true
+    amount: 0.5
+    finetune_epochs: 10
+  quantization:
+    enabled: true
+    method: "dynamic"
+  tflite:
+    enabled: true
+    optimize: true
+    full_integer: false
+  output_dir: "./edge_models/"

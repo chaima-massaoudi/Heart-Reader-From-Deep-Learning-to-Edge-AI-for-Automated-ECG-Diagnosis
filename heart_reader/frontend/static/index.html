@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Heart Reader — ECG Diagnosis Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<!-- ─── Navbar ──────────────────────────────────────────────────────── -->
+<nav class="navbar border-bottom" style="background:var(--bg-card);">
+    <div class="container-fluid px-4">
+        <a class="navbar-brand d-flex align-items-center gap-2" href="/">
+            <div class="logo-pulse"><i class="bi bi-heart-pulse-fill text-danger fs-3"></i></div>
+            <div>
+                <span class="fw-bold fs-4">Heart Reader</span>
+                <span class="badge bg-dark ms-2" style="font-size:0.55rem;vertical-align:middle;">AI-ECG v1.0</span>
+            </div>
+        </a>
+        <div class="d-flex align-items-center gap-3">
+            <span class="badge bg-success" id="statusBadge">
+                <i class="bi bi-circle-fill me-1" style="font-size:0.5rem;"></i> Online
+            </span>
+            <span class="text-muted small" id="sampleCount"></span>
+            <a href="https://github.com/chaima-massaoudi/Heart-Reader-From-Deep-Learning-to-Edge-AI-for-Automated-ECG-Diagnosis"
+               target="_blank" class="btn btn-sm btn-outline-light"><i class="bi bi-github"></i> GitHub</a>
+        </div>
+    </div>
+</nav>
+
+<!-- ─── Main ───────────────────────────────────────────────────────── -->
+<div class="container-fluid px-4 py-3">
+
+    <!-- Row 1: Controls + Diagnosis + Model Info -->
+    <div class="row g-3 mb-3">
+        <!-- Input -->
+        <div class="col-lg-3">
+            <div class="card h-100">
+                <div class="card-header"><i class="bi bi-upload"></i> Input ECG</div>
+                <div class="card-body d-flex flex-column">
+                    <button class="btn btn-primary btn-lg w-100 mb-3" id="btnRandomSample">
+                        <i class="bi bi-shuffle me-2"></i>Random Sample
+                    </button>
+                    <div class="divider-text mb-2">or upload CSV</div>
+                    <div class="upload-zone flex-grow-1" id="uploadZone">
+                        <i class="bi bi-cloud-arrow-up fs-2 text-muted"></i>
+                        <p class="mt-1 mb-0 small">Drop CSV or click</p>
+                        <small class="text-muted" style="font-size:0.65rem;">1000 rows × 12 leads</small>
+                        <input type="file" id="fileInput" accept=".csv" hidden>
+                    </div>
+                    <div class="mt-2" id="fileInfo" style="display:none;">
+                        <div class="d-flex justify-content-between align-items-center p-2 rounded" style="background:var(--bg-hover);">
+                            <small class="text-truncate" id="fileName"></small>
+                            <button class="btn btn-sm btn-outline-danger btn-xs" id="btnClearFile"><i class="bi bi-x"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Diagnosis -->
+        <div class="col-lg-5">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-clipboard2-pulse"></i> Diagnosis</span>
+                    <span class="badge bg-secondary" id="resultStatus">Waiting</span>
+                </div>
+                <div class="card-body" id="diagnosisBody">
+                    <div class="empty-state py-4" id="diagnosisPlaceholder">
+                        <i class="bi bi-heart-pulse fs-1 text-muted"></i>
+                        <p class="mt-2 text-muted small">Load an ECG to see diagnosis</p>
+                    </div>
+                    <div id="diagnosisContent" style="display:none;">
+                        <div class="diagnosis-banner mb-3" id="diagnosisBanner"></div>
+                        <div id="predictionBars"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Model Info + GT -->
+        <div class="col-lg-4">
+            <div class="card h-100">
+                <div class="card-header"><i class="bi bi-cpu"></i> Model Info</div>
+                <div class="card-body" style="overflow-y:auto;">
+                    <div id="modelInfoBody">
+                        <div class="placeholder-glow">
+                            <span class="placeholder col-8"></span><span class="placeholder col-6"></span>
+                        </div>
+                    </div>
+                    <div id="gtSection" style="display:none;">
+                        <hr class="my-2">
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="bi bi-check-circle text-success me-2"></i>
+                            <span style="font-size:0.8rem;font-weight:600;">Ground Truth</span>
+                        </div>
+                        <div id="groundTruth"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Row 2: ECG Waveform -->
+    <div class="row g-3 mb-3">
+        <div class="col-12">
+            <div class="card" id="ecgCard">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-activity"></i> 12-Lead ECG</span>
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="btn-group btn-group-sm" id="leadSelector">
+                            <button class="btn btn-outline-secondary active" data-leads="all">All 12</button>
+                            <button class="btn btn-outline-secondary" data-leads="limb">Limb</button>
+                            <button class="btn btn-outline-secondary" data-leads="chest">Chest</button>
+                        </div>
+                        <button class="btn btn-sm btn-outline-info save-btn" id="btnSaveECG" title="Save ECG as image" style="display:none;">
+                            <i class="bi bi-download me-1"></i>Save ECG
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body p-2" id="ecgContainer">
+                    <div class="empty-state" id="ecgPlaceholder">
+                        <i class="bi bi-activity fs-1 text-muted"></i>
+                        <p class="mt-2 text-muted">Load a sample to visualize the ECG waveform</p>
+                    </div>
+                    <div id="ecgCharts" style="display:none;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Row 3: Prob Chart + Performance -->
+    <div class="row g-3 mb-3">
+        <div class="col-lg-6">
+            <div class="card" id="probCard" style="display:none;">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-bar-chart"></i> Class Probabilities</span>
+                    <button class="btn btn-sm btn-outline-info save-btn" id="btnSaveProbs" title="Save chart as image">
+                        <i class="bi bi-download me-1"></i>Save Chart
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div id="probChartWrap" style="height:260px;position:relative;">
+                        <canvas id="probChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card" id="perfCard" style="display:none;">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-speedometer2"></i> Model Performance</span>
+                    <button class="btn btn-sm btn-outline-info save-btn" id="btnSavePerf" title="Save as image">
+                        <i class="bi bi-download me-1"></i>Save
+                    </button>
+                </div>
+                <div class="card-body" id="perfContent"></div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Loading Overlay -->
+<div class="overlay" id="loadingOverlay" style="display:none;">
+    <div class="text-center">
+        <div class="ecg-loader">
+            <svg viewBox="0 0 200 60" class="ecg-svg">
+                <polyline class="ecg-line" points="0,30 30,30 35,30 40,10 45,50 50,30 55,30 70,30 75,30 80,5 85,55 90,30 95,30 110,30 115,30 120,10 125,50 130,30 135,30 150,30 155,30 160,5 165,55 170,30 175,30 200,30"/>
+            </svg>
+        </div>
+        <p class="mt-3 fs-5 fw-light" id="loadingText">Analyzing ECG...</p>
+    </div>
+</div>
+
+<!-- Toast -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index:1100;">
+    <div class="toast align-items-center border-0" id="toastNotif" role="alert">
+        <div class="d-flex">
+            <div class="toast-body" id="toastBody"></div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>

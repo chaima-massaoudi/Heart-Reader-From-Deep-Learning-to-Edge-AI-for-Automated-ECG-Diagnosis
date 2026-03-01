@@ -18,11 +18,15 @@ ptb-xl-a-comprehensive-electrocardiographic-feature-dataset-1.0.1/
 # PDF papers
 *.pdf
 
+# Video (tracked via Git LFS)
+# *.mp4
+
 # Helper/temp scripts
 download_ptbxl.py
 parallel_download.py
 auto_train.py
 ptbxl.zip
+Screen Recording*
 
 # Python cache
 __pycache__/

@@ -21,10 +21,11 @@ import torch.nn as nn
 from torch.amp import GradScaler, autocast
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import OneCycleLR, CosineAnnealingLR
+from torch.optim.swa_utils import AveragedModel, SWALR
 from tqdm import tqdm
 
 from .callbacks import EarlyStopping, ModelCheckpoint
-from .losses import build_loss
+from .losses import build_loss, mixup_data
 from .metrics import evaluate_all, macro_auc
 
 
@@ -108,6 +109,18 @@ class Trainer:
         self.scheduler = None
         self.scheduler_type = train_cfg.get("scheduler", "one_cycle")
 
+        # Mixup
+        self.mixup_alpha = train_cfg.get("mixup_alpha", 0.0)
+        self.mixup_prob = train_cfg.get("mixup_prob", 0.0)
+
+        # Stochastic Weight Averaging
+        swa_cfg = train_cfg.get("swa", {})
+        self.use_swa = swa_cfg.get("enabled", False)
+        self.swa_start = swa_cfg.get("start_epoch", 40)
+        self.swa_lr = swa_cfg.get("lr", 0.0005)
+        self.swa_model = None
+        self.swa_scheduler = None
+
     def _setup_scheduler(self, steps_per_epoch: int):
         """Initialize LR scheduler.
 
@@ -156,6 +169,12 @@ class Trainer:
                 features = features.to(self.device)
 
             self.optimizer.zero_grad()
+
+            # ── Mixup augmentation ──
+            if self.mixup_alpha > 0 and np.random.rand() < self.mixup_prob:
+                signal, label, features, _ = mixup_data(
+                    signal, label, features, alpha=self.mixup_alpha
+                )
 
             with autocast(device_type=self.amp_device_type, enabled=self.use_amp):
                 logits = self.model(signal, features)
@@ -227,6 +246,38 @@ class Trainer:
 
         return avg_loss, val_auc, y_pred
 
+    @torch.no_grad()
+    def _validate_model(self, val_loader, model) -> Tuple[float, float, np.ndarray]:
+        """Run validation with a specific model (e.g. SWA model)."""
+        model.eval()
+        total_loss = 0.0
+        n_batches = 0
+        all_preds = []
+        all_labels = []
+
+        for batch in val_loader:
+            signal = batch["signal"].to(self.device)
+            label = batch["label"].to(self.device)
+            features = batch.get("features")
+            if features is not None:
+                features = features.to(self.device)
+
+            with autocast(device_type=self.amp_device_type, enabled=self.use_amp):
+                logits = model(signal, features)
+                loss = self.criterion(logits, label)
+
+            total_loss += loss.item()
+            n_batches += 1
+            probs = torch.sigmoid(logits)
+            all_preds.append(probs.cpu().numpy())
+            all_labels.append(label.cpu().numpy())
+
+        avg_loss = total_loss / max(n_batches, 1)
+        y_pred = np.concatenate(all_preds, axis=0)
+        y_true = np.concatenate(all_labels, axis=0)
+        val_auc = macro_auc(y_true, y_pred)
+        return avg_loss, val_auc, y_pred
+
     def fit(
         self,
         train_loader,
@@ -244,6 +295,12 @@ class Trainer:
             History dict with per-epoch metrics.
         """
         self._setup_scheduler(len(train_loader))
+
+        # Setup SWA if enabled
+        if self.use_swa:
+            self.swa_model = AveragedModel(self.model)
+            self.swa_scheduler = SWALR(self.optimizer, swa_lr=self.swa_lr)
+            print(f"  SWA enabled: starts at epoch {self.swa_start}, LR={self.swa_lr}")
 
         history = {
             "epoch": [],
@@ -300,6 +357,11 @@ class Trainer:
                   f"LR: {current_lr:.6f} | "
                   f"Time: {train_time:.1f}s")
 
+            # Update SWA model after swa_start epoch
+            if self.use_swa and epoch >= self.swa_start:
+                self.swa_model.update_parameters(self.model)
+                self.swa_scheduler.step()
+
             # Checkpoint
             saved = self.checkpoint.step(self.model, val_auc, epoch)
             if saved:
@@ -316,6 +378,27 @@ class Trainer:
 
         # Load best model
         self.model = self.checkpoint.load_best(self.model, self.device)
+
+        # Optionally use SWA averaged model if it was active
+        if self.use_swa and self.swa_model is not None:
+            print("Updating SWA batch normalization statistics...")
+            try:
+                torch.optim.swa_utils.update_bn(train_loader, self.swa_model, device=self.device)
+                # Evaluate SWA model
+                swa_loss, swa_auc, _ = self._validate_model(val_loader, self.swa_model)
+                print(f"SWA model — Val AUC: {swa_auc:.4f} vs Best checkpoint: {self.checkpoint.best_score:.4f}")
+                if swa_auc > self.checkpoint.best_score:
+                    print("  [*] SWA model is better — using SWA weights")
+                    # Copy SWA module weights into self.model
+                    self.model.load_state_dict(
+                        {k.replace('module.', ''): v
+                         for k, v in self.swa_model.state_dict().items()
+                         if k.startswith('module.')}
+                    )
+                    # Save SWA checkpoint
+                    self.checkpoint.step(self.model, swa_auc, -1)  # special epoch -1
+            except Exception as e:
+                print(f"SWA BN update failed (non-fatal): {e}")
 
         print(f"\nTraining complete. Best AUC: {self.checkpoint.best_score:.4f}")
         return history
